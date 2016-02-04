@@ -1,0 +1,17 @@
+{
+    "contents" : "library(car)\n\nmodel_data <-\ndd %>%\n  filter(impressions > 100) %>%\n  filter(country != '') %>%\n  filter(ecpm < 30)\n\nmodel <- lm(ecpm ~ network + channel + country, data = model_data)\n\nAnova(model)\n",
+    "created" : 1448037650291.000,
+    "dirty" : true,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3620086064",
+    "id" : "4F5EE120",
+    "lastKnownWriteTime" : 1446654126,
+    "path" : "~/Personal/Example EDA/model.R",
+    "project_path" : "model.R",
+    "properties" : {
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "type" : "r_source"
+}

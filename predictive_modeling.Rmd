@@ -1,0 +1,119 @@
+---
+title: "Comparing Models of Revenue"
+author: "Mhairi McNeill"
+date: "20 November 2015"
+output: html_document
+---
+
+Here I model the revenue made as a function of the number of users, the ad network, the country and the device type (Android or iOS). I will compare several different models to see which is the best at predicting revenue.
+
+First I split the data into a test set and a training set. All evaluations of predictive power are made on the training set. I also converted amalgamated countries into region, to increase the number of observations in each group. 
+
+I also took just a small sample of the data, to increase the speed of the models for this example. 
+
+```{r, cache = TRUE}
+load('clean_data.RData')
+
+suppressPackageStartupMessages(library(randomForest))
+suppressPackageStartupMessages(library(e1071))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(countrycode))
+
+dd <- sample_frac(dd, 0.1)
+
+dd$region <- countrycode(dd$country, 'country.name', 'region') %>% as.factor
+
+dd <- filter(dd, !is.na(region)) # remove missing regions
+
+train <- sample_frac(dd, 0.75)
+test  <- setdiff(dd, train)
+
+```
+
+### Linear Model
+
+First a standard linear model as a baseline. 
+
+```{r, cache = TRUE}
+model_lm <- lm(revenue ~ dau + network + channel + region, data = train)
+
+prediction_lm <- predict(model_lm, newdata = test)
+```
+
+### Random Forest
+
+```{r, cache = TRUE}
+model_rf <- randomForest(revenue ~ dau + network + channel + region, data = train)
+
+prediction_rf <- predict(model_rf, newdata = test)
+```
+
+### SVM
+
+```{r, cache = TRUE}
+model_svm <- svm(revenue ~ dau + network + channel + region, data = train)
+
+prediction_svm <- predict(model_svm, newdata = test)
+```
+
+### Save all the results
+```{r}
+save(prediction_lm, file = 'lm.RData')
+save(prediction_rf, file = 'rf.RData')
+save(prediction_svm, file = 'svm.RData')
+```
+
+## Evaluation
+
+For this example I am evaluating by finding the mean-absolute error. This was chosen because some of the right skew distribution of revenue values. This error measure will not overly penalise models which get a few high values wrong. 
+
+```{r}
+mae <- function(prediction, actual = test$revenue){
+  mean(abs(prediction - actual))  
+}
+
+mae(prediction_lm)
+mae(prediction_rf)
+mae(prediction_svm)
+```
+SVM has the lowest error here, although random the random forest model still does far better than the simple linear regression.
+
+We can make plots to understand how well the models fit the data. Here I am arranging the actual revenues in order of magnitude and comparing with the fitted values in the models.
+
+```{r}
+results <- data.frame(
+  actual = test$revenue,
+  lm     = prediction_lm,
+  rf     = prediction_rf,
+  svm    = prediction_svm)
+
+results <- 
+results %>%
+  tbl_df %>%
+  arrange(actual) %>%
+  mutate(x = row_number(actual)) %>%
+  gather(model, prediction, - actual, -x) 
+
+ggplot(results) +
+  aes(x = x, y = actual, colour = model) +
+  geom_line(colour = 'grey20') +
+  geom_line(aes(y = prediction)) +
+  facet_grid(model ~ .)
+```
+
+We can see that all models fit badly on the extreme values. We can zoom in to see only predictions made for revenue values below 100.
+
+```{r}
+ggplot(results) +
+  aes(x = x, y = actual, colour = model) +
+  geom_line(colour = 'grey20') +
+  geom_line(aes(y = prediction)) +
+  facet_grid(model ~ .) +
+  coord_cartesian(ylim = c(0, 100))
+```
+
+Here we can see that random forest is overestimating for all zero valued results. This might be important depending on the application. 
+
+

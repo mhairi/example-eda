@@ -1,0 +1,17 @@
+{
+    "contents" : "dd <- read.csv('ad_data.csv')\nlibrary(dplyr)\nlibrary(lubridate)\nlibrary(countrycode)\n\n################\n### Cleaning ###\n################\n\ndd <- \ndd %>%\n  tbl_df %>%\n  select(-appname) %>%\n  rename(revenue = rev,\n         impressions = Imp,\n         dau = DAU) %>%\n  mutate(ecpm = (revenue/impressions)*1000,\n         ipu = (impressions/dau)*1000)\n\ndd$date <- dmy(dd$date)\ndd$country <- countrycode(dd$country, 'iso2c', 'country.name')\n\nsave(dd, file = 'clean_data.RData')\n\nmodel_data <-\n  dd %>%\n  filter(impressions > 100) %>%\n  filter(country != '') %>%\n  filter(ecpm < 30)\n\n### Channel ###\n\ndd %>%\n  group_by(channel) %>%\n  summarise(revenue = sum(revenue),\n           impressions = sum(impressions),\n           dau = sum(dau)) %>%\n  mutate(ecpm = (revenue/impressions)*1000,\n         ipu = (impressions/dau)*1000)\n\n### Network ###\n\ndd %>%\n  group_by(network) %>%\n  summarise(revenue = sum(revenue),\n            impressions = sum(impressions),\n            dau = sum(dau)) %>%\n  mutate(ecpm = (revenue/impressions)*1000,\n         ipu = (impressions/dau)*1000)\n\n\n### Country ###\n\ncountries <- \ndd %>%\n  group_by(country) %>%\n  summarise(revenue = sum(revenue),\n            impressions = sum(impressions),\n            dau = sum(dau)) %>%\n  filter(impressions > 1000) %>%\n  mutate(ecpm = (revenue/impressions)*1000,\n         ipu = (impressions/dau)*1000) %>%\n  arrange(desc(dau))\n",
+    "created" : 1448037651984.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2343624732",
+    "id" : "79B4EA9C",
+    "lastKnownWriteTime" : 1448232243,
+    "path" : "~/Personal/Example EDA/groups.R",
+    "project_path" : "groups.R",
+    "properties" : {
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "type" : "r_source"
+}

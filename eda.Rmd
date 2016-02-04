@@ -1,0 +1,97 @@
+---
+title: "Exploring the Data"
+author: "Mhairi McNeill"
+date: "20 November 2015"
+output: html_document
+---
+
+This is an example of some exploratory data analysis on advertising revenue data. The data is an anonymised version of revenue data I have worked with in the past. 
+
+The client was a game developer who used three different advertising sources in their game. They wanted to understand how much revenue they were getting from these three ad providers, along with understanding other factors that effected their advertising revenue. All the adverts were 'rewarded ads' so the player chose to view them in order to get some kind of in-game reward. 
+
+Some common terms used in the games industry:
+
+- DAU: Daily Active Users. The number of people who play a game at least once in a given day.
+
+- eCPM: effective Cost per Mille. The amount of revenue made per 1000 impressions of an advert. 
+
+While this does not seem to be a common industry term, this is a definition used internally. 
+
+- IPU: Impressions Per thousand Users: Number of ad impressions displayed per 1000 users. This is a proxy for fill - the ability of networks to show an advert when asked for one. 
+
+```{r}
+dd <- read.csv('ad_data.csv')
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(lubridate))
+suppressPackageStartupMessages(library(countrycode))
+
+dd <- 
+dd %>%
+  tbl_df %>%
+  rename(revenue = rev,
+         impressions = Imp,
+         dau = DAU) %>%
+  mutate(ecpm = (revenue/impressions)*1000,
+         ipu = (impressions/dau)*1000) %>%
+  filter(impressions > 100) %>% # not enough data in these subgroups
+  filter(country != '') %>%
+  filter(ecpm < 30) # some very high ecpm outliers were seen
+  
+dd$date <- dmy(dd$date)
+dd$country <- countrycode(dd$country, 'iso2c', 'country.name')
+
+save(dd, file = 'clean_data.RData')
+```
+
+### Advertising Networks
+
+First I looked at the three different networks, to see if their average eCPM and IPU were different.
+
+```{r}
+dd %>%
+  group_by(network) %>%
+  summarise(revenue = sum(revenue),
+            impressions = sum(impressions),
+            dau = sum(dau)) %>%
+  mutate(ecpm = (revenue/impressions)*1000,
+         ipu = (impressions/dau)*1000)
+```
+
+The company is getting much better eCPMs from AdColony, than the other two networks. Vungle gets the lowest eCPMs but does slightly better at delivering adverts with a higher IPU. 
+
+### Channel
+
+Then I looked at the two channels: the iOS App Store and Google Play. This is really looking at the difference between adverts shown on iPhones and iPads vs. adverts shown on Android devices. 
+
+```{r}
+dd %>%
+  group_by(channel) %>%
+  summarise(revenue = sum(revenue),
+           impressions = sum(impressions),
+           dau = sum(dau)) %>%
+  mutate(ecpm = (revenue/impressions)*1000,
+         ipu = (impressions/dau)*1000)
+```
+
+There's quite a remarkable difference here too, with iOS strongly out preforming Android. However, since the company had far more users on Android they brought in a similar amount of revenue overall. 
+
+### Country ###
+
+Lastly I looked at top 10 countries by number of users:
+
+```{r}
+dd %>%
+  group_by(country) %>%
+  summarise(revenue = sum(revenue),
+            impressions = sum(impressions),
+            dau = sum(dau)) %>%
+  filter(impressions > 1000) %>%
+  mutate(ecpm = (revenue/impressions)*1000,
+         ipu = (impressions/dau)*1000) %>%
+  arrange(desc(dau))
+```
+
+Here we can see the trend that would be expected with large, wealthy countries getting good eCPMs and good fill rates (with translates into high IPU). 
+
+
+
